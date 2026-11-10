@@ -1,0 +1,10 @@
+# Local build artifacts
+dist/
+*.zip
+*.sha256
+
+# Editor and OS files
+.DS_Store
+Thumbs.db
+*~
+*.swp

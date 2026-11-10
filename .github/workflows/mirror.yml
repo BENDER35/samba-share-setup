@@ -1,0 +1,46 @@
+name: Mirror to GitLab
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "**"
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mirror-to-gitlab
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    name: Push branches and tags to GitLab
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure SSH deploy key
+        env:
+          GITLAB_DEPLOY_KEY: ${{ secrets.GITLAB_DEPLOY_KEY }}
+        run: |
+          install -m 700 -d "$HOME/.ssh"
+          printf '%s\n' "$GITLAB_DEPLOY_KEY" > "$HOME/.ssh/id_ed25519"
+          chmod 600 "$HOME/.ssh/id_ed25519"
+          ssh-keyscan gitlab.com >> "$HOME/.ssh/known_hosts" 2>/dev/null
+
+      - name: Mirror branches and tags
+        run: |
+          git remote add gitlab git@gitlab.com:BENDER_5000/samba-share-setup.git
+          git fetch origin --prune \
+            '+refs/heads/*:refs/remotes/origin/*' \
+            '+refs/tags/*:refs/tags/*'
+          git push gitlab 'refs/remotes/origin/*:refs/heads/*'
+          git push gitlab --tags

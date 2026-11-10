@@ -1,0 +1,23 @@
+stages:
+  - mirror
+
+mirror:github:
+  stage: mirror
+  image: alpine:3.20
+  variables:
+    GIT_DEPTH: "0"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+  before_script:
+    - apk add --no-cache git openssh-client
+    - install -m 700 -d "$HOME/.ssh"
+    - printf '%s' "$GITHUB_DEPLOY_KEY_B64" | base64 -d > "$HOME/.ssh/id_ed25519"
+    - chmod 600 "$HOME/.ssh/id_ed25519"
+    - ssh-keyscan github.com >> "$HOME/.ssh/known_hosts" 2>/dev/null
+  script:
+    - git remote add github git@github.com:BENDER35/samba-share-setup.git 2>/dev/null || git remote set-url github git@github.com:BENDER35/samba-share-setup.git
+    - git fetch origin --prune '+refs/heads/*:refs/remotes/origin/*' '+refs/tags/*:refs/tags/*'
+    - git push github 'refs/remotes/origin/*:refs/heads/*'
+    - git push github --tags
